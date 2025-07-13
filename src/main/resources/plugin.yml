@@ -1,0 +1,8 @@
+name: YRCloudBackpack
+version: 1.0.0
+main: com.yirankuma.yrcloudbackpack.YRCloudBackpack
+api-version: 1.13
+authors: [ YiRanKuma ]
+
+depend:
+  - YRDatabase
