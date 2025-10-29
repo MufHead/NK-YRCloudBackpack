@@ -28,9 +28,7 @@ public class InventoryManager {
     }
 
     public void loadPlayerInventory(Player player) {
-        String playerId = player.getUniqueId().toString();
-
-        YRDatabase.getDatabaseManager().smartGet(schemaName, playerId, inventorySchema)
+        YRDatabase.getDatabaseManager().smartGet(schemaName, player, inventorySchema)
                 .thenAccept(data -> {
                     if (data != null && data.containsKey("inventory_data")) {
                         // 有缓存数据，加载到玩家背包
@@ -47,13 +45,12 @@ public class InventoryManager {
                 })
                 .exceptionally(throwable -> {
                     player.sendMessage("§c背包数据加载失败：" + throwable.getMessage());
-                    Server.getInstance().getLogger().error("加载玩家背包失败: " + playerId, throwable);
+                    Server.getInstance().getLogger().error("加载玩家背包失败: " + player.getName(), throwable);
                     return null;
                 });
     }
 
     public void savePlayerInventory(Player player) {
-        String playerId = player.getUniqueId().toString();
         String playerName = player.getName(); // 获取玩家名称
         String inventoryJson = serializeInventoryToJson(player.getInventory());
         String armorJson = serializeArmorToJson(player.getInventory());
@@ -68,7 +65,7 @@ public class InventoryManager {
         );
 
         // 缓存设置为永久（-1）
-        YRDatabase.getDatabaseManager().smartSet(schemaName, playerId, inventoryData, inventorySchema, -1)
+        YRDatabase.getDatabaseManager().smartSet(schemaName, player, inventoryData, inventorySchema, -1)
                 .thenAccept(success -> {
                     if (success) {
                         player.sendMessage("§a背包数据已保存到云端！");
@@ -78,7 +75,7 @@ public class InventoryManager {
                 })
                 .exceptionally(throwable -> {
                     player.sendMessage("§c背包数据保存异常：" + throwable.getMessage());
-                    Server.getInstance().getLogger().error("保存玩家背包失败: " + playerId, throwable);
+                    Server.getInstance().getLogger().error("保存玩家背包失败: " + player.getName(), throwable);
                     return null;
                 });
     }
@@ -289,7 +286,7 @@ public class InventoryManager {
     }
 
     public void persistPlayerInventory(Player player) {
-        YRDatabase.getDatabaseManager().persistAndClearCache(schemaName, player.getUniqueId().toString(), inventorySchema)
+        YRDatabase.getDatabaseManager().persistAndClearCache(schemaName, player, inventorySchema)
                 .thenAccept(success -> {
                     if (success) {
                         player.sendMessage("§a背包数据已持久化到数据库！");
