@@ -3,6 +3,7 @@ package com.yirankuma.yrcloudbackpack.Manager;
 import cn.nukkit.Player;
 import cn.nukkit.Server;
 import cn.nukkit.inventory.PlayerInventory;
+import cn.nukkit.inventory.PlayerOffhandInventory;
 import cn.nukkit.item.Item;
 import cn.nukkit.item.StringItem;
 import cn.nukkit.nbt.tag.CompoundTag;
@@ -34,8 +35,9 @@ public class InventoryManager {
                         // 有缓存数据，加载到玩家背包
                         String inventoryJson = (String) data.get("inventory_data");
                         String armorJson = (String) data.get("armor_data");
+                        String offhandJson = (String) data.get("offhand_data");
 
-                        loadInventoryFromJson(player, inventoryJson, armorJson);
+                        loadInventoryFromJson(player, inventoryJson, armorJson, offhandJson);
                         player.sendMessage("§a背包数据已从云端加载！");
                     } else {
                         // 没有缓存数据，保存当前背包作为初始数据
@@ -54,12 +56,14 @@ public class InventoryManager {
         String playerName = player.getName(); // 获取玩家名称
         String inventoryJson = serializeInventoryToJson(player.getInventory());
         String armorJson = serializeArmorToJson(player.getInventory());
+        String offhandJson = serializeOffhandToJson(player.getOffhandInventory());
 
         // 包含所有需要保存的数据
         Map<String, Object> inventoryData = Map.of(
                 "player_name", playerName,  // 添加玩家名称
                 "inventory_data", inventoryJson,
-                "armor_data", armorJson
+                "armor_data", armorJson,
+                "offhand_data", offhandJson
                 // "last_updated", new Timestamp(System.currentTimeMillis())  // 使用Timestamp对象
                 // last_server 暂时不写，按你的要求
         );
@@ -174,6 +178,7 @@ public class InventoryManager {
             armorData.put(armorSlots[i], itemData);
         }
 
+
 //        // 添加装备元数据
 //        Map<String, Object> metadata = new HashMap<>();
 //        metadata.put("serializedAt", System.currentTimeMillis());
@@ -187,14 +192,55 @@ public class InventoryManager {
         }
     }
 
-    private void loadInventoryFromJson(Player player, String inventoryJson, String armorJson) {
+
+    private String serializeOffhandToJson(PlayerOffhandInventory offhandInventory) {
+        Map<String, Object> armorData = new HashMap<>();
+
+        // 获取装备槽位的物品
+        Item offHandItem = offhandInventory.getItem(0);
+        String slotKey = "offhand";
+        if (offHandItem == null || offHandItem.getId() == 0) {
+            armorData.put(slotKey, null);
+        } else {
+            Map<String, Object> itemData = new HashMap<>();
+            itemData.put("identifier", offHandItem.getNamespaceId());
+            itemData.put("damage", offHandItem.getDamage());
+            itemData.put("count", offHandItem.getCount());
+            itemData.put("name", offHandItem.getName());
+
+            // 处理NBT数据
+            if (offHandItem.hasCompoundTag()) {
+                byte[] compoundTag = offHandItem.getCompoundTag();
+                if (compoundTag != null && compoundTag.length > 0) {
+                    itemData.put("nbt", java.util.Base64.getEncoder().encodeToString(compoundTag));
+                } else {
+                    itemData.put("nbt", null);
+                }
+            } else {
+                itemData.put("nbt", null);
+            }
+
+            itemData.put("customName", offHandItem.getCustomName());
+            itemData.put("lore", offHandItem.getLore());
+
+            armorData.put(slotKey, itemData);
+        }
+        try {
+            return new Gson().toJson(armorData);
+        } catch (Exception e) {
+            Server.getInstance().getLogger().error("序列化副手数据失败", e);
+            return "";
+        }
+    }
+
+    private void loadInventoryFromJson(Player player, String inventoryJson, String armorJson, String offhandJson) {
         try {
             // 加载背包数据
+            PlayerInventory inventory = player.getInventory();
+            PlayerOffhandInventory offhandInventory = player.getOffhandInventory();
             if (inventoryJson != null && !inventoryJson.isEmpty()) {
                 Gson gson = new Gson();
                 Map<String, Object> inventoryData = gson.fromJson(inventoryJson, Map.class);
-
-                PlayerInventory inventory = player.getInventory();
                 inventory.clearAll(); // 清空当前背包
 
                 for (Map.Entry<String, Object> entry : inventoryData.entrySet()) {
@@ -224,7 +270,6 @@ public class InventoryManager {
                 Gson gson = new Gson();
                 Map<String, Object> armorData = gson.fromJson(armorJson, Map.class);
 
-                PlayerInventory inventory = player.getInventory();
                 String[] armorSlots = {"helmet", "chestplate", "leggings", "boots"};
                 Item[] armorItems = new Item[4];
 
@@ -237,6 +282,23 @@ public class InventoryManager {
                 }
 
                 inventory.setArmorContents(armorItems);
+            }
+            // 加载副手
+            if (offhandJson != null && !offhandJson.isEmpty()) {
+                Gson gson = new Gson();
+                Map<String, Object> offhandData = gson.fromJson(offhandJson, Map.class);
+
+                String slotName = "offhand";
+                Item offhandItem = null;
+
+                Object itemDataObj = offhandData.get(slotName);
+                if (itemDataObj != null) {
+                    Map<String, Object> itemData = (Map<String, Object>) itemDataObj;
+                    offhandItem = createItemFromData(itemData);
+                }
+                if (offhandItem != null) {
+                    offhandInventory.setItem(0, offhandItem);
+                }
             }
 
         } catch (Exception e) {
@@ -286,6 +348,7 @@ public class InventoryManager {
     }
 
     public void persistPlayerInventory(Player player) {
+        System.out.println("持久化！");
         YRDatabase.getDatabaseManager().persistAndClearCache(schemaName, player, inventorySchema)
                 .thenAccept(success -> {
                     if (success) {

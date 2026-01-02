@@ -1,20 +1,12 @@
 package com.yirankuma.yrcloudbackpack.EventListener;
 
 import cn.nukkit.Player;
-import cn.nukkit.entity.Attribute;
-import cn.nukkit.entity.AttributeModifier;
 import cn.nukkit.event.EventHandler;
 import cn.nukkit.event.Listener;
 import cn.nukkit.event.player.PlayerJoinEvent;
 import cn.nukkit.event.player.PlayerQuitEvent;
-import cn.nukkit.event.player.PlayerToggleSprintEvent;
 import com.yirankuma.yrcloudbackpack.Manager.InventoryManager;
 import com.yirankuma.yrcloudbackpack.YRCloudBackpack;
-import com.yirankuma.yrdatabase.YRDatabase;
-
-import java.util.UUID;
-
-import static com.yirankuma.yrcloudbackpack.Schemas.Schemas.inventorySchema;
 
 public class EventListener implements Listener {
     public InventoryManager inventoryManager;
@@ -35,4 +27,12 @@ public class EventListener implements Listener {
         inventoryManager.savePlayerInventory(player);
         inventoryManager.persistPlayerInventory(player);
     }
+
+//    @EventHandler
+//    public void onDataPacketReceive(DataPacketReceiveEvent event) {
+//        DataPacket dp = event.getPacket();
+//        if (dp instanceof NeteaseLoginPacket){
+//            System.out.println(((NeteaseLoginPacket) dp).proxyUid);
+//        }
+//    }
 }
