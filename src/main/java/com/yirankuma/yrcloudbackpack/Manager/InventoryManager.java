@@ -38,15 +38,12 @@ public class InventoryManager {
                         String offhandJson = (String) data.get("offhand_data");
 
                         loadInventoryFromJson(player, inventoryJson, armorJson, offhandJson);
-                        player.sendMessage("§a背包数据已从云端加载！");
                     } else {
                         // 没有缓存数据，保存当前背包作为初始数据
                         savePlayerInventory(player);
-                        player.sendMessage("§e首次使用跨服背包，当前背包已同步到云端。");
                     }
                 })
                 .exceptionally(throwable -> {
-                    player.sendMessage("§c背包数据加载失败：" + throwable.getMessage());
                     Server.getInstance().getLogger().error("加载玩家背包失败: " + player.getName(), throwable);
                     return null;
                 });
@@ -71,14 +68,11 @@ public class InventoryManager {
         // 缓存设置为永久（-1）
         YRDatabase.getDatabaseManager().smartSet(schemaName, player, inventoryData, inventorySchema, -1)
                 .thenAccept(success -> {
-                    if (success) {
-                        player.sendMessage("§a背包数据已保存到云端！");
-                    } else {
-                        player.sendMessage("§c背包数据保存失败！");
+                    if (!success) {
+                        Server.getInstance().getLogger().warning("保存玩家背包到缓存失败: " + player.getName());
                     }
                 })
                 .exceptionally(throwable -> {
-                    player.sendMessage("§c背包数据保存异常：" + throwable.getMessage());
                     Server.getInstance().getLogger().error("保存玩家背包失败: " + player.getName(), throwable);
                     return null;
                 });
@@ -348,17 +342,18 @@ public class InventoryManager {
     }
 
     public void persistPlayerInventory(Player player) {
-        System.out.println("持久化！");
         YRDatabase.getDatabaseManager().persistAndClearCache(schemaName, player, inventorySchema)
                 .thenAccept(success -> {
-                    if (success) {
-                        player.sendMessage("§a背包数据已持久化到数据库！");
-                    } else {
+                    if (!success) {
                         // 假如redis未开启，则忽略失败
                         if (YRDatabase.getDatabaseManager().isRedisConnected()) {
-                            player.sendMessage("§c背包数据持久化失败！ ");
+                            Server.getInstance().getLogger().warning("持久化玩家背包失败: " + player.getName());
                         }
                     }
+                })
+                .exceptionally(throwable -> {
+                    Server.getInstance().getLogger().error("持久化玩家背包异常: " + player.getName(), throwable);
+                    return null;
                 });
     }
 }

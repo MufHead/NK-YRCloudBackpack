@@ -3,29 +3,45 @@ package com.yirankuma.yrcloudbackpack.EventListener;
 import cn.nukkit.Player;
 import cn.nukkit.event.EventHandler;
 import cn.nukkit.event.Listener;
-import cn.nukkit.event.player.PlayerJoinEvent;
-import cn.nukkit.event.player.PlayerQuitEvent;
 import com.yirankuma.yrcloudbackpack.Manager.InventoryManager;
 import com.yirankuma.yrcloudbackpack.YRCloudBackpack;
+import com.yirankuma.yrdatabase.event.PlayerDataInitializeEvent;
+import com.yirankuma.yrdatabase.event.PlayerDataPersistEvent;
 
 public class EventListener implements Listener {
-    public InventoryManager inventoryManager;
+    private final InventoryManager inventoryManager;
 
     public EventListener() {
         inventoryManager = YRCloudBackpack.getInstance().getInventoryManager();
     }
 
+    // 初始化玩家数据（从数据库加载到缓存）
     @EventHandler
-    public void onPlayerJoin(PlayerJoinEvent event) {
+    public void onPlayerDataInitialize(PlayerDataInitializeEvent event) {
+        String uid = event.getUid();
         Player player = event.getPlayer();
-        YRCloudBackpack.getInstance().getInventoryManager().loadPlayerInventory(player);
+
+        if (player != null) {
+            // YRDatabase已经帮你判断好了，直接加载数据
+            inventoryManager.loadPlayerInventory(player);
+        }
     }
 
+    // 持久化玩家数据（从缓存保存到数据库）
     @EventHandler
-    public void onPlayerQuit(PlayerQuitEvent event) {
+    public void onPlayerDataPersist(PlayerDataPersistEvent event) {
+        String uid = event.getUid();
         Player player = event.getPlayer();
-        inventoryManager.savePlayerInventory(player);
-        inventoryManager.persistPlayerInventory(player);
+
+        if (player != null) {
+            // 先保存到缓存
+            inventoryManager.savePlayerInventory(player);
+
+            // 只在需要持久化时保存到数据库（自动排除转服情况）
+            if (event.shouldPersist()) {
+                inventoryManager.persistPlayerInventory(player);
+            }
+        }
     }
 
 //    @EventHandler
