@@ -19,7 +19,7 @@ dependencies {
     compileOnly(fileTree(mapOf("dir" to "libs", "include" to listOf("*.jar"))))
 
     // 从 JitPack 引入 YRDatabase 依赖
-    compileOnly("com.github.MufHead.YRDatabase:yrdatabase-nukkit:v1.0.4")
+    implementation("com.github.MufHead.YRDatabase:yrdatabase-nukkit:v1.0.4")
 
     testImplementation(platform("org.junit:junit-bom:5.9.1"))
     testImplementation("org.junit.jupiter:junit-jupiter")
